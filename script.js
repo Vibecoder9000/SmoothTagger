@@ -1,16 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Element Getters ---
     const folderSelectionScreen = document.getElementById('folderSelectionScreen');
     const projectFolderPathInput = document.getElementById('projectFolderPathInput');
     const loadProjectFolderButton = document.getElementById('loadProjectFolderButton');
     const folderError = document.getElementById('folderError');
     const mainTaggerUI = document.getElementById('mainTaggerUI');
     const mainImage = document.getElementById('mainImage');
-    // const imageCountDisplay = document.getElementById('imageCountDisplay'); // Not used / Hidden by CSS
     const galleryGridContainer = document.getElementById('galleryGridContainer');
     
     const globalTagInput = document.getElementById('globalTagInput');
-    const addSingleGlobalTagButton = document.getElementById('addSingleGlobalTagButton'); // Button for single global tag
+    const addSingleGlobalTagButton = document.getElementById('addSingleGlobalTagButton');
     const availableTagsDisplay = document.getElementById('availableTagsDisplay');
     
     const applicationBox = document.getElementById('applicationBox');
@@ -24,10 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const dragGhost = document.getElementById('dragGhost');
 
-    // --- Variables ---
     let currentProjectServerPath = '';
     let imageFiles = [];
-    let textFileContents = {}; // Stores tags for each image file { "image.txt": ["tag1", "tag2"] }
+    let textFileContents = {};
     let currentImageIndex = -1;
     const availableTagColors = [
         '#A93226', '#2471A3', '#1E8449', '#AF601A',
@@ -35,11 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
         '#6C3483', '#1B4F72', '#922B21', '#145A32',
         '#78281F', '#154360', '#0E6251', '#7E5109'
     ];
-    let globalTagsSet = new Set(); // Stores all unique global tags
+    let globalTagsSet = new Set();
     const API_BASE_URL = '/api';
-    let draggedTagElement = null; // Holds the tag element being dragged from applicationBox
+    let draggedTagElement = null;
 
-    // --- Logging Function ---
     function logMessage(message, type = 'info') {
         const prefix = `[${new Date().toLocaleTimeString()}]`;
         if (type === 'error') console.error(`${prefix} ${message}`);
@@ -47,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
         else console.log(`${prefix} ${message}`);
     }
 
-    // --- State Management (localStorage) ---
     function loadState() {
         const savedPath = localStorage.getItem('loraTagger_projectUserPath');
         const savedGlobalTags = localStorage.getItem('loraTagger_globalTags');
@@ -58,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const tags = JSON.parse(savedGlobalTags);
                 if (Array.isArray(tags)) {
-                    tags.forEach(tag => addGlobalTagUI(tag, false)); // false: don't re-save during load
+                    tags.forEach(tag => addGlobalTagUI(tag, false));
                 }
             } catch (e) {
                 logMessage('Could not parse saved global tags from localStorage.', 'error');
@@ -83,10 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-    window.addEventListener('beforeunload', () => saveState(true)); // Save everything on unload
-    loadState(); // Load state when DOM is ready
+    window.addEventListener('beforeunload', () => saveState(true));
+    loadState();
 
-    // --- "LOAD PROJECT" BUTTON ---
     if (loadProjectFolderButton) {
         loadProjectFolderButton.addEventListener('click', async () => {
             const userPath = projectFolderPathInput.value.trim();
@@ -106,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (!response.ok) {
                     let errorData = { error: `Server error: ${response.status}` };
-                    try { errorData = await response.json(); } catch (e) { /* ignore if not json */ }
+                    try { errorData = await response.json(); } catch (e) { }
                     throw new Error(errorData.error || `Failed with status ${response.status}`);
                 }
 
@@ -133,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     displayImage(currentImageIndex); 
                     loadInitialGlobalTagsFromFiles(); 
-                    saveState(true); // Save path and current index
+                    saveState(true);
                 } else {
                     if(folderError) folderError.textContent = 'No images found in the specified folder.';
                     logMessage('No compatible image files found.', 'error');
@@ -146,19 +140,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Initial Global Tags from Text Files ---
     function loadInitialGlobalTagsFromFiles() {
         const allTagsFromFiles = new Set();
         Object.values(textFileContents).forEach(tagsArray => {
             tagsArray.forEach(tag => allTagsFromFiles.add(tag.toLowerCase().replace(/\s+/g, '_')));
         });
-        if (availableTagsDisplay) availableTagsDisplay.innerHTML = ''; // Clear existing global tags UI
-        globalTagsSet.clear(); // Clear the JS Set
-        allTagsFromFiles.forEach(tag => addGlobalTagUI(tag, false)); // Add without re-saving to localStorage
-        saveState(true); // Save the newly populated globalTagsSet from files
+        if (availableTagsDisplay) availableTagsDisplay.innerHTML = '';
+        globalTagsSet.clear();
+        allTagsFromFiles.forEach(tag => addGlobalTagUI(tag, false));
+        saveState(true);
     }
 
-    // --- Gallery Population & Image Display ---
     function populateGalleryGrid() {
         if (!galleryGridContainer) return;
         galleryGridContainer.innerHTML = '';
@@ -199,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loadTagsForCurrentImage();
-        saveState(false); // Don't re-save global tags, just current index and path
+        saveState(false);
     }
 
     function loadTagsForCurrentImage() {
@@ -217,15 +209,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const txtFileName = `${baseName}.txt`;
         const tagsArray = textFileContents[txtFileName] || [];
-        tagsArray.forEach(tagText => addTagToApplicationBox(tagText, false)); // false: don't save on initial load
+        tagsArray.forEach(tagText => addTagToApplicationBox(tagText, false));
     }
 
-    // --- Global Tag Input & Add Button ---
     if (addSingleGlobalTagButton && globalTagInput) {
         addSingleGlobalTagButton.addEventListener('click', () => {
             const tagText = globalTagInput.value.trim();
             if (tagText) {
-                addGlobalTagUI(tagText, true); // true: save global tags after adding
+                addGlobalTagUI(tagText, true);
                 globalTagInput.value = '';
                 globalTagInput.focus(); 
             }
@@ -234,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         globalTagInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault(); 
-                addSingleGlobalTagButton.click(); // Trigger button click
+                addSingleGlobalTagButton.click();
             }
         });
     }
@@ -243,15 +234,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const normalizedTag = tagText.toLowerCase().replace(/\s+/g, '_');
         if (!globalTagsSet.has(normalizedTag) && normalizedTag) {
             globalTagsSet.add(normalizedTag);
-            const tagElement = createTagElement(normalizedTag, true, true); // isGlobal = true
+            const tagElement = createTagElement(normalizedTag, true, true);
             if (availableTagsDisplay) availableTagsDisplay.appendChild(tagElement);
             if (shouldSaveGlobalList) {
-                saveState(true); // Save the updated globalTagsSet to localStorage
+                saveState(true);
             }
         }
     }
     
-    // --- Tag Element Creation & Drag/Drop ---
     function createTagElement(text, draggable, isGlobal = false) {
         const tag = document.createElement('span');
         tag.classList.add('tag');
@@ -265,9 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.dataTransfer.effectAllowed = 'copy';
             });
             tag.addEventListener('click', () => { 
-                addTagToApplicationBox(text, true); // true: save current image tags after adding
+                addTagToApplicationBox(text, true);
             });
-        } else { // Tag in applicationBox (specific to an image)
+        } else {
             tag.addEventListener('dragstart', (e) => {
                 draggedTagElement = tag; 
                 e.dataTransfer.setData('text/plain', text);
@@ -311,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault(); 
             e.dataTransfer.dropEffect = 'copy'; 
             if (draggedTagElement && draggedTagElement.parentNode === applicationBox) {
-                e.dataTransfer.dropEffect = 'move'; // Indicate move if dragging within same box
+                e.dataTransfer.dropEffect = 'move';
             }
         });
 
@@ -320,22 +310,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const tagText = e.dataTransfer.getData('text/plain');
 
             if (draggedTagElement && draggedTagElement.parentNode === applicationBox) {
-                // Handle reordering within applicationBox if desired (more complex)
-                // For now, if it's dropped back into the same box, do nothing or re-append
-                // draggedTagElement.classList.remove('dragging'); // Already handled by dragend
-                // applicationBox.appendChild(draggedTagElement); // Re-append if it was visually removed
                 draggedTagElement = null;
                 return;
             }
             
             if (tagText) {
-                addTagToApplicationBox(tagText, true); // Add (from global) and save
+                addTagToApplicationBox(tagText, true);
             }
-            if (draggedTagElement) draggedTagElement = null; // Clear if it was a global tag
+            if (draggedTagElement) draggedTagElement = null;
         });
     }
 
-    // Global drag listeners for removing tags from applicationBox by dragging them out
     document.body.addEventListener('dragover', (e) => {
         if (draggedTagElement) { 
             e.preventDefault();
@@ -353,8 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveCurrentImageTags(); 
                 logMessage(`Tag "${tagText}" removed by dragging out. Saved.`, 'success');
             }
-            // Reset draggedTagElement, its class is removed in its own 'dragend' listener
-            // draggedTagElement = null; // Handled by tag's own dragend
         }
     });
     
@@ -362,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!applicationBox) return;
         const existingTags = Array.from(applicationBox.querySelectorAll('.tag')).map(t => t.textContent);
         if (!existingTags.includes(tagText)) {
-            const tagElement = createTagElement(tagText, true, false); // isGlobal = false
+            const tagElement = createTagElement(tagText, true, false);
             applicationBox.appendChild(tagElement);
             if (shouldSave) {
                 await saveCurrentImageTags();
@@ -382,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tagsInBox = Array.from(applicationBox.querySelectorAll('.tag')).map(t => t.textContent);
         const txtFileName = currentImageFile.replace(/\.[^/.]+$/, "") + ".txt";
         
-        textFileContents[txtFileName] = tagsInBox; // Update local cache
+        textFileContents[txtFileName] = tagsInBox;
 
         try {
             const response = await fetch(`${API_BASE_URL}/save-tags`, {
@@ -398,13 +381,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorData = await response.json();
                 throw new Error(errorData.error || `Server error: ${response.status}`);
             }
-            // logMessage(`Tags saved for ${currentImageFile}.`, 'success'); // Logged by calling function
         } catch (error) {
             logMessage(`Error saving tags for ${currentImageFile}: ${error.message}`, 'error');
         }
     }
 
-    // --- "ADD TO ALL" FUNCTIONALITY ---
     if (addToAllButton && addToAllInput) {
         addToAllButton.addEventListener('click', async () => {
             const tagToAdd = addToAllInput.value.trim().toLowerCase().replace(/\s+/g, '_');
@@ -443,18 +424,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             logMessage(`"${tagToAdd}" added to ${successCount} new images. Already present in ${alreadyPresentCount}.`, "success");
             addToAllInput.value = ''; 
-            if (currentImageIndex !== -1) loadTagsForCurrentImage(); // Refresh current image tags if visible
-            addGlobalTagUI(tagToAdd, true); // Add to global tags list and save global list
+            if (currentImageIndex !== -1) loadTagsForCurrentImage();
+            addGlobalTagUI(tagToAdd, true);
         });
     }
 
-    // --- Navigation ---
     function navigatePrev() { if (imageFiles.length > 0) displayImage(currentImageIndex - 1); }
     function navigateNext() { if (imageFiles.length > 0) displayImage(currentImageIndex + 1); }
     if (prevButton) prevButton.addEventListener('click', navigatePrev);
     if (nextButton) nextButton.addEventListener('click', navigateNext);
     document.addEventListener('keydown', (e) => {
-        // Check if the main tagger UI is visible and an input/textarea is NOT focused
         if (mainTaggerUI && mainTaggerUI.style.display === 'flex' &&
             document.activeElement.tagName !== 'INPUT' &&
             document.activeElement.tagName !== 'TEXTAREA') {
@@ -464,15 +443,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- GALLERY HORIZONTAL SCROLL WITH MOUSE WHEEL ---
     if (galleryGridContainer) {
         galleryGridContainer.addEventListener('wheel', (event) => {
-            if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) { // If horizontal scroll is already dominant
+            if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
                 return; 
             }
-            event.preventDefault(); // Prevent page scroll
-            const scrollAmount = event.deltaY * 0.8; // Adjust multiplier for scroll speed
+            event.preventDefault();
+            const scrollAmount = event.deltaY * 0.8;
             galleryGridContainer.scrollLeft += scrollAmount;
-        }, { passive: false }); // passive: false is needed to call preventDefault()
+        }, { passive: false });
     }
 });

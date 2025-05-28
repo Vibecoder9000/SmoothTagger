@@ -4,15 +4,13 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = 3000; // You can change this port
+const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
 
-// Serve static files (index.html, style.css, script.js) from the root directory
 app.use(express.static(__dirname));
 
-// Helper to validate user-provided path and ensure it's a directory
 async function validateUserProvidedPath(userPath) {
     if (!userPath || typeof userPath !== 'string' || userPath.trim() === '') {
         throw new Error('Invalid path provided.');
@@ -36,14 +34,13 @@ async function validateUserProvidedPath(userPath) {
     }
 }
 
-// API Endpoint: List contents of a folder
 app.post('/api/list-folder', async (req, res) => {
     const { folderPath } = req.body;
     try {
         const projectDir = await validateUserProvidedPath(folderPath);
         const items = await fs.readdir(projectDir);
         const imageFiles = items.filter(file => /\.(jpe?g|png|gif|webp)$/i.test(file))
-            .sort((a, b) => { // a and b are filenames (strings)
+            .sort((a, b) => {
                 const numA = parseInt(a.match(/^\d+/)?.[0] || a);
                 const numB = parseInt(b.match(/^\d+/)?.[0] || b);
                 if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
@@ -69,7 +66,6 @@ app.post('/api/list-folder', async (req, res) => {
     }
 });
 
-// API Endpoint: Get image file
 app.get('/api/image', async (req, res) => {
     const { folderPath, imageName } = req.query;
     if (!folderPath || !imageName) {
@@ -92,7 +88,6 @@ app.get('/api/image', async (req, res) => {
     }
 });
 
-// API Endpoint: Save tags for an image
 app.post('/api/save-tags', async (req, res) => {
     const { folderPath, imageName, tags } = req.body;
     if (!folderPath || !imageName || tags === undefined) {
@@ -113,7 +108,6 @@ app.post('/api/save-tags', async (req, res) => {
     }
 });
 
-// Serve index.html for the root path
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
