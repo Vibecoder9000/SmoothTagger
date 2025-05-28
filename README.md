@@ -1,6 +1,6 @@
 ![](sample.png)
 
-# Lora Image Tagger (lora-tagger-single-folder)
+# Lora Image Tagger
 
 ## Description
 
@@ -39,43 +39,33 @@ The application features a Node.js/Express backend to serve the user interface a
 
 ### Setup and Launch
 
-1.  **Clone the Repository** (if you have it as a Git repository):
+1.  **Clone the Repository**
     ```bash
     git clone <repository-url>
     cd lora-tagger-single-folder
     ```
-    If you only have the files, navigate to the project directory in your terminal.
-
+	
 2.  **Install Dependencies**:
     Open a terminal in the project's root directory and run:
     ```bash
     npm install
     ```
-    This will install Express, CORS, and Nodemon (for development).
-
+	
 3.  **Start the Server**:
-    *   For production/standard mode:
-        ```bash
-        npm start
-        ```
-    *   For development mode (with automatic server restart on file changes using Nodemon):
-        ```bash
-        npm run dev
-        ```
+	```bash
+	npm start
+	```
 
 4.  **Access the Application**:
     Open your web browser and go to:
     ```
     http://localhost:3000
     ```
-    (Or the port specified in `server.js` if you changed it).
 
 5.  **Load Images**:
     In the application UI, you will be prompted to enter the **full absolute path** to your image project folder. For example:
     *   Windows: `C:\Users\YourName\MyLoraProject\images`
     *   macOS/Linux: `/home/yourname/my_lora_project/images`
-
-    Click the "Load" button to load the images from the specified directory.
 
 ## API Endpoints
 
@@ -97,6 +87,3 @@ The backend provides the following API endpoints:
     *   **Description**: Saves a list of tags to a `.txt` file for a specific image. The `.txt` file will have the same base name as the image.
     *   **Request Body**: `{ "folderPath": "path/to/folder", "imageName": "image.jpg", "tags": ["tag1", "tag2", "tag3"] }`
     *   **Response**: JSON object confirming success or failure.
-
-This README should provide a good overview of the project.
-```
