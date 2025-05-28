@@ -10,7 +10,6 @@ body, html {
     color: #e0e0e0;
 }
 
-/* ... (folderSelectionScreen, container, left-pane, main-image-area, gallery-grid styles remain unchanged from the last "good" version) ... */
 #folderSelectionScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; text-align: center; padding: 20px; box-sizing: border-box; }
 #folderSelectionScreen h1 { font-size: 2.5em; margin-bottom: 20px; color: #fff; }
 #folderSelectionScreen p { font-size: 1.1em; margin-bottom: 15px; }
@@ -32,21 +31,18 @@ body, html {
 .gallery-grid-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
 .gallery-grid-container::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
-
-/* --- RIGHT PANE --- */
 .right-pane {
     flex: 0 0 50%;
     height: 100vh;
-    padding: 10px; /* Overall padding for the right pane */
+    padding: 10px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    gap: 15px; /* Vertical gap BETWEEN .controls-top, .application-section-header, .application-section-wrapper, etc. */
+    gap: 15px;
 }
 
-/* Common style for section titles */
-.section-title { /* Styles for "Global Tags" and "Tags for X" text */
+.section-title {
     text-align: center;
     flex-grow: 1;
     margin: 0;
@@ -55,9 +51,8 @@ body, html {
     font-weight: 500;
     line-height: normal;
 }
-.inline-heading {} /* Can be removed if not used for other specific styling */
+.inline-heading {}
 
-/* Shared input field style */
 .app-input-field {
     padding: 8px 10px;
     font-size: 0.85em;
@@ -69,12 +64,11 @@ body, html {
 }
 .app-input-field:focus { border-color: #007bff; outline: none; box-shadow: 0 0 5px rgba(0, 123, 255, 0.3); }
 
-/* Section: Global Tags Area */
 .controls-top {
     flex-shrink: 0;
-    display: flex; /* Make it a flex column to use gap for its children */
+    display: flex;
     flex-direction: column;
-    gap: 8px; /* <<<< SPACE BETWEEN global-tags-header AND availableTagsDisplay */
+    gap: 8px;
 }
 
 .global-tags-header {
@@ -83,7 +77,7 @@ body, html {
     align-items: center;
     gap: 10px;
     border-bottom: 1px solid #555;
-    padding-bottom: 8px; /* Padding within the header itself, below text/border */
+    padding-bottom: 8px;
 }
 .add-global-tag-container { display: flex; align-items: center; gap: 8px; min-width: 220px; flex-shrink: 0; order: 1; }
 #globalTagInput.app-input-field { flex-grow: 1; min-width: 100px; }
@@ -92,15 +86,13 @@ body, html {
 .global-tags-header > .section-title { order: 2; }
 .global-tags-header > .header-spacer { order: 3; min-width: 220px; visibility: hidden; flex-shrink: 0; }
 
-/* Section: "Tags for X" Header */
 .application-section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding-bottom: 8px; /* Padding within the header itself */
+    padding-bottom: 8px;
     flex-shrink: 0;
-    /* No margin-bottom here, .right-pane gap handles it */
 }
 .add-to-all-container { display: flex; align-items: center; gap: 8px; min-width: 220px; flex-shrink: 0; order: 1; }
 #addToAllInput.app-input-field { flex-grow: 1; min-width: 100px; }
@@ -109,18 +101,14 @@ body, html {
 #currentImageTagsLabel.section-title { order: 2; }
 .application-section-header > .header-spacer { order: 3; min-width: 220px; visibility: hidden; flex-shrink: 0; }
 
-/* Section: Specific Tags Box Wrapper & Box */
 .application-section-wrapper {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     min-height: 150px;
-    gap: 8px; /* <<<< SPACE BETWEEN application-section-header (implicitly via parent) AND applicationBox */
-              /* This might not be needed if .right-pane gap is sufficient and structure is flat */
-              /* Let's remove this and rely on .right-pane gap and structure */
+    gap: 8px;
 }
 
-/* Common style for tag display boxes */
 .tag-display-area {
     display: flex;
     flex-wrap: wrap;
@@ -133,14 +121,11 @@ body, html {
     background-color: rgba(0,0,0,0.1);
 }
 
-#applicationBox.tag-display-area { /* This is inside .application-section-wrapper */
-    flex-grow: 1; /* Fill the wrapper */
+#applicationBox.tag-display-area {
+    flex-grow: 1;
     overflow-y: auto;
-    /* The space above this box comes from the .right-pane's gap separating
-       .application-section-header from .application-section-wrapper */
 }
 
-/* Individual Tags */
 .tag { padding: 4px 8px; border-radius: 3px; font-size: 0.9em; cursor: grab; color: white; user-select: none; transition: background-color 0.2s, transform 0.1s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); align-self: flex-start; flex-grow: 0; flex-shrink: 0; }
 .tag.dragging { opacity: 0.5; }
 .tag:active { cursor: grabbing; transform: scale(0.95); }
@@ -149,7 +134,6 @@ body, html {
 
 #imageCountDisplay { display: none; }
 
-/* Section: Navigation Buttons */
 .navigation-buttons-container { display: flex; gap: 10px; margin-top: auto; padding-top: 10px; flex-shrink: 0; }
 .nav-button { flex-grow: 1; padding: 10px 15px; font-size: 1.1em; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s, transform 0.1s; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; }
 .nav-button:active { transform: translateY(1px); }
