@@ -42,7 +42,7 @@ The application features a Node.js/Express backend to serve the user interface a
 1.  **Clone the Repository**
     ```bash
     git clone https://github.com/Vibecoder9000/SmoothTagger
-    cd lora-tagger-single-folder
+    cd SmoothTagger
     ```
 	
 2.  **Install Dependencies**:
