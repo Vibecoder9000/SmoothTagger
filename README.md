@@ -41,7 +41,7 @@ The application features a Node.js/Express backend to serve the user interface a
 
 1.  **Clone the Repository**
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/Vibecoder9000/SmoothTagger
     cd lora-tagger-single-folder
     ```
 	
@@ -63,7 +63,7 @@ The application features a Node.js/Express backend to serve the user interface a
     ```
 
 5.  **Load Images**:
-    In the application UI, you will be prompted to enter the **full absolute path** to your image project folder. For example:
+    Enter the **full absolute path** to your image project folder. For example:
     *   Windows: `C:\Users\YourName\MyLoraProject\images`
     *   macOS/Linux: `/home/yourname/my_lora_project/images`
 
