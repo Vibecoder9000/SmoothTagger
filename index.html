@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Lora Image Tagger</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div id="folderSelectionScreen">
+        <h1>Lora Image Tagger</h1>
+        <p>Full path to your image project folder</p>
+        <input type="text" id="projectFolderPathInput" placeholder="e.g., C:/Users/YourName/MyLoraProject/images">
+        <button id="loadProjectFolderButton">Load</button>
+        <p id="folderError" class="error-message"></p>
+    </div>
+
+    <div class="container" id="mainTaggerUI" style="display: none;">
+        <div class="left-pane">
+            <div class="main-image-area">
+                <img id="mainImage" src="#" alt="Image will load here">
+            </div>
+            <div id="galleryGridContainer" class="gallery-grid-container">
+                <!-- Thumbnails will be populated here -->
+            </div>
+        </div>
+        <div class="right-pane">
+            <div class="controls-top">
+                <div class="global-tags-header">
+                    <!-- NEW STRUCTURE for global tag input and button -->
+                    <div class="add-global-tag-container">
+                        <input type="text" id="globalTagInput" class="app-input-field" placeholder="Add global tag">
+                        <button id="addSingleGlobalTagButton">Add</button> <!-- NEW BUTTON -->
+                    </div>
+                    <h3 class="section-title inline-heading">Global Tags</h3>
+                    <div class="header-spacer"></div> <!-- Spacer for centering title -->
+                </div>
+                <div id="availableTagsDisplay" class="tag-display-area">
+                    <!-- Available global tags will appear here -->
+                </div>
+            </div>
+
+            <div class="application-section-header">
+                <div class="add-to-all-container">
+					<input type="text" id="addToAllInput" class="app-input-field" placeholder="Add to all"> <!-- Added app-input-field -->
+                    <button id="addToAllButton">Add</button> <!-- Changed button text -->
+                </div>
+                 <h3 id="currentImageTagsLabel" class="section-title">
+                    Tags for <span id="currentImageIdentifier"></span>
+                </h3>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="application-section-wrapper">
+                <div id="applicationBox" class="tag-display-area application-box" droppable="true">
+                    <!-- Tags for the current image will appear here -->
+                </div>
+            </div>
+            
+            <!-- <p id="imageCountDisplay"></p> REMOVED image count display -->
+            <div class="navigation-buttons-container">
+                <button id="prevButton" class="nav-button prev-btn">
+                    <span class="arrow-icon"><</span>
+                </button>
+                <button id="nextButton" class="nav-button next-btn">
+                    <span class="arrow-icon">></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="dragGhost" style="position: absolute; visibility: hidden; pointer-events: none;"></div>
+    <script src="/script.js"></script>
+</body>
+</html>
