@@ -1,3 +1,5 @@
+![](sample.png)
+
 # Lora Image Tagger (lora-tagger-single-folder)
 
 ## Description
