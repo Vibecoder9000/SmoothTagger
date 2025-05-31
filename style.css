@@ -83,8 +83,64 @@ body, html {
 #globalTagInput.app-input-field { flex-grow: 1; min-width: 100px; }
 #addSingleGlobalTagButton { padding: 8px 12px; font-size: 0.85em; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
 #addSingleGlobalTagButton:hover { background-color: #45a049; }
-.global-tags-header > .section-title { order: 2; }
-.global-tags-header > .header-spacer { order: 3; min-width: 220px; visibility: hidden; flex-shrink: 0; }
+.global-tags-header > .section-title { order: 2; text-align: center; flex-grow: 1; } /* Ensure it still tries to center if space allows */
+
+/* New styles for the fill image feature */
+.fill-image-feature-wrapper {
+    order: 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Aligns children (switch and button) to its right end */
+    gap: 8px;
+    min-width: 220px; /* To balance with the add-global-tag-container */
+}
+
+.size-switch-container {
+    display: flex;
+    border: 1px solid #555;
+    border-radius: 4px;
+    overflow: hidden; /* Ensures child button corners conform to parent's border-radius */
+}
+
+.size-switch-button {
+    padding: 6px 10px;
+    font-size: 0.8em;
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-right: 1px solid #555; /* Separator line */
+}
+
+.size-switch-button:last-child {
+    border-right: none; /* No separator for the last button */
+}
+
+.size-switch-button.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.size-switch-button:not(.active):hover {
+    background-color: #4f4f4f;
+}
+
+#fillImageButton {
+    padding: 8px 12px;
+    font-size: 0.85em;
+    background-color: #007bff; /* Different color to distinguish */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#fillImageButton:hover {
+    background-color: #0056b3;
+}
+/* End of new styles */
 
 .application-section-header {
     display: flex;
@@ -99,7 +155,9 @@ body, html {
 #addToAllButton { padding: 8px 12px; font-size: 0.85em; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
 #addToAllButton:hover { background-color: #45a049; }
 #currentImageTagsLabel.section-title { order: 2; }
-.application-section-header > .header-spacer { order: 3; min-width: 220px; visibility: hidden; flex-shrink: 0; }
+.application-section-header > .header-spacer { order: 3; min-width: 220px; /* Potentially remove if not needed elsewhere */ flex-shrink: 0; }
+/* If header-spacer in .application-section-header is only for visual balance and not strictly needed, its visibility: hidden; could be removed or adjusted if layouts break. */
+/* For now, assuming it might still be used for alignment in that specific header. */
 
 .application-section-wrapper {
     flex-grow: 1;

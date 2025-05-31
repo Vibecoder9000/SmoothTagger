@@ -22,6 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const dragGhost = document.getElementById('dragGhost');
 
+    // New UI elements for Fill Image Feature
+    const fillImageButton = document.getElementById('fillImageButton');
+    const size512Button = document.getElementById('size512Button');
+    const size1024Button = document.getElementById('size1024Button');
+
+    let selectedSize = 512; // Default size
     let currentProjectServerPath = '';
     let imageFiles = [];
     let textFileContents = {};
@@ -453,4 +459,72 @@ document.addEventListener('DOMContentLoaded', () => {
             galleryGridContainer.scrollLeft += scrollAmount;
         }, { passive: false });
     }
+
+    // --- Fill Image Feature Logic ---
+    if (size512Button && size1024Button) {
+        size512Button.addEventListener('click', () => {
+            selectedSize = 512;
+            size512Button.classList.add('active');
+            size1024Button.classList.remove('active');
+            logMessage(`Selected size: ${selectedSize}x${selectedSize}`);
+        });
+
+        size1024Button.addEventListener('click', () => {
+            selectedSize = 1024;
+            size1024Button.classList.add('active');
+            size512Button.classList.remove('active');
+            logMessage(`Selected size: ${selectedSize}x${selectedSize}`);
+        });
+    }
+
+    if (fillImageButton) {
+        fillImageButton.addEventListener('click', async () => {
+            if (currentImageIndex === -1 || !imageFiles[currentImageIndex]) {
+                logMessage('No image selected to fill.', 'error');
+                // Optionally, show a user-facing message here
+                return;
+            }
+
+            const imageName = imageFiles[currentImageIndex];
+            logMessage(`Attempting to fill image "${imageName}" to ${selectedSize}x${selectedSize}...`, 'info');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/fill-image`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        folderPath: currentProjectServerPath,
+                        imageName: imageName,
+                        targetWidth: selectedSize,
+                        targetHeight: selectedSize
+                    })
+                });
+
+                if (!response.ok) {
+                    let errorData = { error: `Server error: ${response.status}` };
+                    try { errorData = await response.json(); } catch (e) { /* ignore */ }
+                    throw new Error(errorData.error || `Failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                logMessage(`Image "${imageName}" filled successfully. New dimensions: ${result.newWidth}x${result.newHeight}. Output: ${result.outputPath}`, 'success');
+
+                // Reload main image with cache buster
+                if (mainImage) {
+                    mainImage.src = `${API_BASE_URL}/image?folderPath=${encodeURIComponent(currentProjectServerPath)}&imageName=${encodeURIComponent(imageName)}&t=${new Date().getTime()}`;
+                }
+
+                // Optionally, refresh gallery thumbnail
+                const thumb = galleryGridContainer.querySelector(`img[data-index="${currentImageIndex}"]`);
+                if (thumb) {
+                    thumb.src = `${API_BASE_URL}/image?folderPath=${encodeURIComponent(currentProjectServerPath)}&imageName=${encodeURIComponent(imageName)}&t=${new Date().getTime()}`;
+                }
+
+            } catch (error) {
+                logMessage(`Error filling image "${imageName}": ${error.message}`, 'error');
+                // Optionally, display an error message to the user here
+            }
+        });
+    }
+    // --- End Fill Image Feature Logic ---
 });
