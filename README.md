@@ -1,3 +1,7 @@
+## 1.3 Self explanatory
+
+![](Copy.png)
+
 ## 1.2 Added Stats page to better copy paste tags
 
 ![](Stats.png)
