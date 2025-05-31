@@ -175,8 +175,38 @@ app.post('/api/fill-image', async (req, res) => {
         .png() // Outputting as PNG
         .toBuffer();
 
-        // Overwrite the original file
-        await fs.writeFile(imagePath, finalImageBuffer);
+        // Retry logic for writing the file
+        const MAX_WRITE_ATTEMPTS = 3;
+        const WRITE_RETRY_DELAY_MS = 250;
+        let writeSuccess = false;
+
+        for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt++) {
+            try {
+                console.log(`Attempt ${attempt}/${MAX_WRITE_ATTEMPTS} to write processed image to: ${imagePath}`);
+                await fs.writeFile(imagePath, finalImageBuffer);
+                writeSuccess = true;
+                console.log(`Successfully wrote processed image to: ${imagePath} on attempt ${attempt}`);
+                break; // Exit loop on success
+            } catch (writeError) {
+                console.error(`Attempt ${attempt}/${MAX_WRITE_ATTEMPTS} to write file ${imagePath} failed. Error: ${writeError.message}`);
+                if (attempt < MAX_WRITE_ATTEMPTS) {
+                    await new Promise(resolve => setTimeout(resolve, WRITE_RETRY_DELAY_MS)); // Wait before retrying
+                } else {
+                    // If all attempts fail, re-throw the last error to be caught by the outer catch block
+                    throw writeError;
+                }
+            }
+        }
+
+        // If writeSuccess is false here, it means all attempts failed AND the error was not re-thrown (which shouldn't happen with current logic)
+        // However, as a safeguard or if re-throw logic changes, this check could be useful.
+        // For now, it's largely redundant if the loop's else block correctly re-throws.
+        if (!writeSuccess) {
+             // This path should ideally not be reached if the loop re-throws.
+            console.error(`Critical: Write failed after ${MAX_WRITE_ATTEMPTS} attempts for ${imagePath} but error was not propagated.`);
+            // Sending a generic error, though the outer catch should handle it if re-thrown properly.
+            return res.status(500).json({ error: `Failed to write image after ${MAX_WRITE_ATTEMPTS} attempts for ${imagePath}.` });
+        }
 
         const finalMetadata = await sharp(imagePath).metadata(); // Get metadata of the new image
 
@@ -190,8 +220,9 @@ app.post('/api/fill-image', async (req, res) => {
         });
 
     } catch (error) {
-        console.error(`Error processing image ${imageName}:`, error);
-        res.status(500).json({ error: `Failed to process image. ${error.message}` });
+        // This outer catch will now also handle errors re-thrown from the write retry loop
+        console.error(`Error processing image ${imageName} (or writing to disk):`, error);
+        res.status(500).json({ error: `Failed to process image or write to disk. ${error.message}` });
     }
 });
 
