@@ -22,12 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const dragGhost = document.getElementById('dragGhost');
 
-    // New UI elements for Fill Image Feature
-    const fillImageButton = document.getElementById('fillImageButton');
-    const size512Button = document.getElementById('size512Button');
-    const size1024Button = document.getElementById('size1024Button');
+    // UI elements for image processing features
+    const makeOneToOneButton = document.getElementById('makeOneToOneButton');
+    const downscaleButton = document.getElementById('downscaleButton');
+    const size512Button = document.getElementById('size512Button'); // Keep for downscaleButton
+    const size1024Button = document.getElementById('size1024Button'); // Keep for downscaleButton
 
-    let selectedSize = 512; // Default size
+    let selectedSize = 512; // Default size, used by Downscale to Target
     let currentProjectServerPath = '';
     let imageFiles = [];
     let textFileContents = {};
@@ -460,7 +461,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: false });
     }
 
-    // --- Fill Image Feature Logic ---
+    // --- Image Processing Feature Logic ---
+
+    // Event listeners for the 512/1024 size switch (used by Downscale to Target)
     if (size512Button && size1024Button) {
         size512Button.addEventListener('click', () => {
             selectedSize = 512;
@@ -477,54 +480,103 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (fillImageButton) {
-        fillImageButton.addEventListener('click', async () => {
+    // Event listener for "Make 1:1 Ratio" button
+    if (makeOneToOneButton) {
+        makeOneToOneButton.addEventListener('click', async () => {
             if (currentImageIndex === -1 || !imageFiles[currentImageIndex]) {
-                logMessage('No image selected to fill.', 'error');
-                // Optionally, show a user-facing message here
+                logMessage('No image selected for "Make 1:1 Ratio".', 'error');
+                alert('No image selected. Please select an image first.');
                 return;
             }
 
             const imageName = imageFiles[currentImageIndex];
-            logMessage(`Attempting to fill image "${imageName}" to ${selectedSize}x${selectedSize}...`, 'info');
+            logMessage(`"Make 1:1 Ratio" button clicked for "${imageName}".`, 'info');
 
             try {
-                const response = await fetch(`${API_BASE_URL}/fill-image`, {
+                const response = await fetch(`${API_BASE_URL}/make-one-to-one`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         folderPath: currentProjectServerPath,
                         imageName: imageName,
-                        targetWidth: selectedSize,
-                        targetHeight: selectedSize
                     })
                 });
 
                 if (!response.ok) {
                     let errorData = { error: `Server error: ${response.status}` };
-                    try { errorData = await response.json(); } catch (e) { /* ignore */ }
+                    try { errorData = await response.json(); } catch (e) { /* ignore parsing error */ }
                     throw new Error(errorData.error || `Failed with status ${response.status}`);
                 }
 
                 const result = await response.json();
-                logMessage(`Image "${imageName}" filled successfully. New dimensions: ${result.newWidth}x${result.newHeight}. Output: ${result.outputPath}`, 'success');
+                logMessage(`Image "${imageName}" successfully processed by "Make 1:1 Ratio". Output: ${result.outputPath}`, 'success');
 
-                // Reload main image with cache buster
                 if (mainImage) {
                     mainImage.src = `${API_BASE_URL}/image?folderPath=${encodeURIComponent(currentProjectServerPath)}&imageName=${encodeURIComponent(imageName)}&t=${new Date().getTime()}`;
                 }
-
-                // Optionally, refresh gallery thumbnail
                 const thumb = galleryGridContainer.querySelector(`img[data-index="${currentImageIndex}"]`);
                 if (thumb) {
                     thumb.src = `${API_BASE_URL}/image?folderPath=${encodeURIComponent(currentProjectServerPath)}&imageName=${encodeURIComponent(imageName)}&t=${new Date().getTime()}`;
                 }
 
             } catch (error) {
-                logMessage(`Error filling image "${imageName}": ${error.message}`, 'error');
-                // Optionally, display an error message to the user here
+                logMessage(`Error during "Make 1:1 Ratio" for "${imageName}": ${error.message}`, 'error');
+                alert(`Error processing image with "Make 1:1 Ratio": ${error.message}`);
             }
         });
     }
-    // --- End Fill Image Feature Logic ---
+
+    // Event listener for "Downscale to Target" button
+    if (downscaleButton) {
+        downscaleButton.addEventListener('click', async () => {
+            if (currentImageIndex === -1 || !imageFiles[currentImageIndex]) {
+                logMessage('No image selected for "Downscale to Target".', 'error');
+                alert('No image selected. Please select an image first.');
+                return;
+            }
+
+            const imageName = imageFiles[currentImageIndex];
+            logMessage(`"Downscale to Target" button clicked for "${imageName}" with target ${selectedSize}x${selectedSize}.`, 'info');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/downscale-to-target`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        folderPath: currentProjectServerPath,
+                        imageName: imageName,
+                        targetSize: selectedSize
+                    })
+                });
+
+                if (!response.ok) {
+                    let errorData = { error: `Server error: ${response.status}` };
+                    try { errorData = await response.json(); } catch (e) { /* ignore parsing error */ }
+                    // For specific user feedback on preconditions
+                    if (response.status === 400) { // Bad Request, likely a precondition failure
+                         logMessage(`Precondition failed for "Downscale to Target" on "${imageName}": ${errorData.error}`, 'error');
+                         alert(`Could not downscale: ${errorData.error}`);
+                         return; // Stop further generic error handling
+                    }
+                    throw new Error(errorData.error || `Failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                logMessage(`Image "${imageName}" successfully processed by "Downscale to Target". Output: ${result.outputPath}`, 'success');
+
+                if (mainImage) {
+                    mainImage.src = `${API_BASE_URL}/image?folderPath=${encodeURIComponent(currentProjectServerPath)}&imageName=${encodeURIComponent(imageName)}&t=${new Date().getTime()}`;
+                }
+                const thumb = galleryGridContainer.querySelector(`img[data-index="${currentImageIndex}"]`);
+                if (thumb) {
+                    thumb.src = `${API_BASE_URL}/image?folderPath=${encodeURIComponent(currentProjectServerPath)}&imageName=${encodeURIComponent(imageName)}&t=${new Date().getTime()}`;
+                }
+
+            } catch (error) {
+                logMessage(`Error during "Downscale to Target" for "${imageName}": ${error.message}`, 'error');
+                alert(`Error processing image with "Downscale to Target": ${error.message}`);
+            }
+        });
+    }
+    // --- End Image Processing Feature Logic ---
 });

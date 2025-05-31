@@ -35,6 +35,71 @@ async function validateUserProvidedPath(userPath) {
     }
 }
 
+// Helper function to determine fill color based on border pixels
+async function determineFillColor(imageSharpInstance, initialMetadata) {
+    // imageSharpInstance should be a clone if further operations are done on the original instance outside this function
+    let fillColor = '#FFFFFF'; // Default to white
+    try {
+        if (initialMetadata.width > 1 && initialMetadata.height > 1) {
+            const borderSize = 1;
+            // Create a new sharp instance for each extract to avoid interference if the original instance is used elsewhere.
+            const topBorder = await imageSharpInstance.clone().extract({ left: 0, top: 0, width: initialMetadata.width, height: borderSize }).raw().toBuffer({ resolveWithObject: true });
+            const bottomBorder = await imageSharpInstance.clone().extract({ left: 0, top: initialMetadata.height - borderSize, width: initialMetadata.width, height: borderSize }).raw().toBuffer({ resolveWithObject: true });
+            const leftBorder = await imageSharpInstance.clone().extract({ left: 0, top: 0, width: borderSize, height: initialMetadata.height }).raw().toBuffer({ resolveWithObject: true });
+            const rightBorder = await imageSharpInstance.clone().extract({ left: initialMetadata.width - borderSize, top: 0, width: borderSize, height: initialMetadata.height }).raw().toBuffer({ resolveWithObject: true });
+
+            const allBorderPixels = [
+                ...topBorder.data, ...bottomBorder.data,
+                ...leftBorder.data, ...rightBorder.data
+            ];
+
+            let totalLuminance = 0;
+            const channels = initialMetadata.channels || 3;
+            const numPixels = allBorderPixels.length / channels;
+
+            if (numPixels > 0) {
+                for (let i = 0; i < allBorderPixels.length; i += channels) {
+                    const r = allBorderPixels[i];
+                    const g = allBorderPixels[i+1];
+                    const b = allBorderPixels[i+2];
+                    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                    totalLuminance += luminance;
+                }
+                const avgLuminance = totalLuminance / numPixels;
+                fillColor = avgLuminance > 128 ? '#FFFFFF' : '#000000';
+                console.log(`Determined fill color: ${fillColor} (avg luminance: ${avgLuminance.toFixed(2)})`);
+            } else {
+                 console.log('Not enough border pixel data for determineFillColor, defaulting to white.');
+            }
+        } else {
+            console.log('Image too small for border color analysis in determineFillColor, defaulting to white.');
+        }
+    } catch (error) {
+        console.error(`Error in determineFillColor: ${error.message}. Defaulting to white.`);
+        fillColor = '#FFFFFF'; // Fallback color
+    }
+    return fillColor;
+}
+
+// Helper function to write file with retry logic
+async function writeFileWithRetry(filePath, buffer, maxAttempts = 3, delayMs = 250) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            console.log(`Attempt ${attempt}/${maxAttempts} to write file to: ${filePath}`);
+            await fs.writeFile(filePath, buffer);
+            console.log(`Successfully wrote file to: ${filePath} on attempt ${attempt}`);
+            return; // Exit on success
+        } catch (writeError) {
+            console.error(`Attempt ${attempt}/${maxAttempts} to write file ${filePath} failed. Error: ${writeError.message}`);
+            if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            } else {
+                throw writeError; // Re-throw the last error if all attempts fail
+            }
+        }
+    }
+}
+
 app.post('/api/list-folder', async (req, res) => {
     const { folderPath } = req.body;
     try {
@@ -67,164 +132,131 @@ app.post('/api/list-folder', async (req, res) => {
     }
 });
 
-// New endpoint for filling/padding image
-app.post('/api/fill-image', async (req, res) => {
-    const { folderPath, imageName, targetWidth, targetHeight } = req.body;
+// Endpoint to make an image 1:1 ratio by padding
+app.post('/api/make-one-to-one', async (req, res) => {
+    const { folderPath, imageName } = req.body;
 
-    if (!folderPath || !imageName || !targetWidth || !targetHeight) {
-        return res.status(400).json({ error: 'Missing required parameters: folderPath, imageName, targetWidth, targetHeight.' });
-    }
-
-    if (typeof targetWidth !== 'number' || typeof targetHeight !== 'number' || targetWidth <= 0 || targetHeight <= 0) {
-        return res.status(400).json({ error: 'targetWidth and targetHeight must be positive numbers.' });
+    if (!folderPath || !imageName) {
+        return res.status(400).json({ error: 'Missing required parameters: folderPath, imageName.' });
     }
 
     const imagePath = path.join(folderPath, imageName);
-
-    // Security check: Ensure imagePath is within the intended folderPath to prevent directory traversal
     if (!path.resolve(imagePath).startsWith(path.resolve(folderPath))) {
-        console.error(`Forbidden access attempt: User path "${folderPath}", image name "${imageName}", resolved to "${imagePath}"`);
         return res.status(403).json({ error: 'Forbidden: Path traversal attempt detected.' });
     }
 
     try {
-        await fs.access(imagePath, fs.constants.R_OK | fs.constants.W_OK); // Check read/write access
+        await fs.access(imagePath, fs.constants.R_OK | fs.constants.W_OK);
     } catch (err) {
-        console.error(`Error accessing image file at ${imagePath}:`, err);
-        return res.status(404).json({ error: `Image not found or not accessible at ${imagePath}. Details: ${err.message}` });
+        return res.status(404).json({ error: `Image not found or not accessible: ${err.message}` });
     }
 
     try {
         const image = sharp(imagePath);
         const metadata = await image.metadata();
 
-        // Simplified border color detection: average luminance of border pixels
-        // This is a basic heuristic. More advanced methods could be used.
-        let fillColor = '#FFFFFF'; // Default to white
+        // Use a clone for color determination if the original 'image' instance is chained further before this color is used.
+        // Here, 'image' is re-assigned, so it's fine.
+        const fillColor = await determineFillColor(image.clone(), metadata);
 
-        if (metadata.width > 1 && metadata.height > 1) { // Ensure image is large enough to have distinct borders
-            const borderSize = 1; // 1-pixel border
-            const topBorder = await image.clone().extract({ left: 0, top: 0, width: metadata.width, height: borderSize }).raw().toBuffer({ resolveWithObject: true });
-            const bottomBorder = await image.clone().extract({ left: 0, top: metadata.height - borderSize, width: metadata.width, height: borderSize }).raw().toBuffer({ resolveWithObject: true });
-            const leftBorder = await image.clone().extract({ left: 0, top: 0, width: borderSize, height: metadata.height }).raw().toBuffer({ resolveWithObject: true });
-            const rightBorder = await image.clone().extract({ left: metadata.width - borderSize, top: 0, width: borderSize, height: metadata.height }).raw().toBuffer({ resolveWithObject: true });
+        const newSize = Math.max(metadata.width, metadata.height);
 
-            const allBorderPixels = [
-                ...topBorder.data, ...bottomBorder.data,
-                ...leftBorder.data, ...rightBorder.data
-            ];
-
-            let totalLuminance = 0;
-            const channels = metadata.channels || 3; // Assume 3 channels (RGB) if not specified
-            const numPixels = allBorderPixels.length / channels;
-
-            if (numPixels > 0) {
-                for (let i = 0; i < allBorderPixels.length; i += channels) {
-                    const r = allBorderPixels[i];
-                    const g = allBorderPixels[i+1];
-                    const b = allBorderPixels[i+2];
-                    // Using standard luminance formula
-                    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-                    totalLuminance += luminance;
-                    // If alpha channel is present and it's very transparent, this might influence choice
-                    // For now, we rely on flatten later to handle transparency with the chosen fillColor
-                }
-                const avgLuminance = totalLuminance / numPixels;
-                fillColor = avgLuminance > 128 ? '#FFFFFF' : '#000000'; // Threshold for black/white
-                console.log(`Determined fill color: ${fillColor} (avg luminance: ${avgLuminance.toFixed(2)})`);
-            } else {
-                 console.log('Not enough border pixel data to determine color, defaulting to white.');
-            }
-        } else {
-            console.log('Image too small for border color analysis, defaulting to white.');
-        }
-
-        // Prepare the image that will be placed onto the canvas:
-        let imageToCompositeInstance = image.removeAlpha().flatten({ background: fillColor });
-
-        // Get metadata of this flattened image
-        const flattenedMetadata = await imageToCompositeInstance.metadata();
-
-        // If the flattened image is larger than the target dimensions, resize it down.
-        if (flattenedMetadata.width > targetWidth || flattenedMetadata.height > targetHeight) {
-            imageToCompositeInstance = imageToCompositeInstance.resize({
-                width: targetWidth,
-                height: targetHeight,
-                fit: 'inside', // This ensures aspect ratio is maintained and it fits *within* target dimensions
-                withoutEnlargement: true // Important: do not enlarge if it's already smaller
-            });
-        }
-
-        const imageToCompositeBuffer = await imageToCompositeInstance.toBuffer();
-
-        // Now composite this buffer onto the new canvas
-        const finalImageBuffer = await sharp({
-            create: {
-                width: targetWidth,
-                height: targetHeight,
-                // Use original metadata.channels for consistency in determining output channels,
-                // or default to 3 if not available. flatten ensures it's opaque.
-                channels: metadata.channels || 3,
+        const processedImageBuffer = await image
+            .removeAlpha() // Ensure image is opaque
+            .flatten({ background: fillColor }) // Fill any transparent areas with determined color
+            .resize({ // This ensures the content is placed correctly within the 'extend' operation
+                width: metadata.width,
+                height: metadata.height,
+                fit: 'contain', // Content is scaled down if it exceeds these dimensions, but not up
+                background: fillColor // Background for 'contain' if needed, though extend handles the main padding
+            })
+            .extend({
+                top: Math.floor((newSize - metadata.height) / 2),
+                bottom: Math.ceil((newSize - metadata.height) / 2),
+                left: Math.floor((newSize - metadata.width) / 2),
+                right: Math.ceil((newSize - metadata.width) / 2),
                 background: fillColor
-            }
-        })
-        .composite([{
-            input: imageToCompositeBuffer,
-            gravity: 'centre' // Centre the (potentially downsized) image
-        }])
-        .png() // Outputting as PNG
-        .toBuffer();
+            })
+            .png()
+            .toBuffer();
 
-        // Retry logic for writing the file
-        const MAX_WRITE_ATTEMPTS = 3;
-        const WRITE_RETRY_DELAY_MS = 250;
-        let writeSuccess = false;
+        await writeFileWithRetry(imagePath, processedImageBuffer);
 
-        for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt++) {
-            try {
-                console.log(`Attempt ${attempt}/${MAX_WRITE_ATTEMPTS} to write processed image to: ${imagePath}`);
-                await fs.writeFile(imagePath, finalImageBuffer);
-                writeSuccess = true;
-                console.log(`Successfully wrote processed image to: ${imagePath} on attempt ${attempt}`);
-                break; // Exit loop on success
-            } catch (writeError) {
-                console.error(`Attempt ${attempt}/${MAX_WRITE_ATTEMPTS} to write file ${imagePath} failed. Error: ${writeError.message}`);
-                if (attempt < MAX_WRITE_ATTEMPTS) {
-                    await new Promise(resolve => setTimeout(resolve, WRITE_RETRY_DELAY_MS)); // Wait before retrying
-                } else {
-                    // If all attempts fail, re-throw the last error to be caught by the outer catch block
-                    throw writeError;
-                }
-            }
-        }
-
-        // If writeSuccess is false here, it means all attempts failed AND the error was not re-thrown (which shouldn't happen with current logic)
-        // However, as a safeguard or if re-throw logic changes, this check could be useful.
-        // For now, it's largely redundant if the loop's else block correctly re-throws.
-        if (!writeSuccess) {
-             // This path should ideally not be reached if the loop re-throws.
-            console.error(`Critical: Write failed after ${MAX_WRITE_ATTEMPTS} attempts for ${imagePath} but error was not propagated.`);
-            // Sending a generic error, though the outer catch should handle it if re-thrown properly.
-            return res.status(500).json({ error: `Failed to write image after ${MAX_WRITE_ATTEMPTS} attempts for ${imagePath}.` });
-        }
-
-        const finalMetadata = await sharp(imagePath).metadata(); // Get metadata of the new image
+        const finalMetadata = await sharp(imagePath).metadata(); // Get new metadata
 
         res.json({
             success: true,
-            message: `Image processed and saved to ${imageName}.`,
+            message: 'Image successfully made 1:1.',
             outputPath: imagePath,
-            newWidth: finalMetadata.width,
-            newHeight: finalMetadata.height,
+            newWidth: finalMetadata.width, // Should be newSize
+            newHeight: finalMetadata.height, // Should be newSize
             fillColorUsed: fillColor
         });
 
     } catch (error) {
-        // This outer catch will now also handle errors re-thrown from the write retry loop
-        console.error(`Error processing image ${imageName} (or writing to disk):`, error);
-        res.status(500).json({ error: `Failed to process image or write to disk. ${error.message}` });
+        console.error(`Error in /make-one-to-one for ${imageName}:`, error);
+        res.status(500).json({ error: `Failed to make image 1:1. ${error.message}` });
     }
 });
+
+
+// Endpoint to downscale an image to a target size
+app.post('/api/downscale-to-target', async (req, res) => {
+    const { folderPath, imageName, targetSize } = req.body;
+
+    if (!folderPath || !imageName || !targetSize) {
+        return res.status(400).json({ error: 'Missing required parameters: folderPath, imageName, targetSize.' });
+    }
+    if (typeof targetSize !== 'number' || targetSize <= 0) {
+        return res.status(400).json({ error: 'targetSize must be a positive number.' });
+    }
+
+    const imagePath = path.join(folderPath, imageName);
+    if (!path.resolve(imagePath).startsWith(path.resolve(folderPath))) {
+        return res.status(403).json({ error: 'Forbidden: Path traversal attempt detected.' });
+    }
+
+    try {
+        await fs.access(imagePath, fs.constants.R_OK | fs.constants.W_OK);
+    } catch (err) {
+        return res.status(404).json({ error: `Image not found or not accessible: ${err.message}` });
+    }
+
+    try {
+        const image = sharp(imagePath);
+        const metadata = await image.metadata();
+
+        if (metadata.width !== metadata.height) {
+            return res.status(400).json({ error: 'Image is not 1:1 ratio. Please use "Make 1:1 Ratio" first.' });
+        }
+        if (metadata.width <= targetSize) {
+            return res.status(400).json({ error: `Image width (${metadata.width}px) is not larger than target size (${targetSize}px). No downscaling needed.` });
+        }
+
+        const processedImageBuffer = await image
+            .resize({ width: targetSize, height: targetSize }) // Already 1:1
+            .png()
+            .toBuffer();
+
+        await writeFileWithRetry(imagePath, processedImageBuffer);
+
+        const finalMetadata = await sharp(imagePath).metadata(); // Get new metadata
+
+
+        res.json({
+            success: true,
+            message: 'Image successfully downscaled.',
+            outputPath: imagePath,
+            newWidth: finalMetadata.width, // Should be targetSize
+            newHeight: finalMetadata.height // Should be targetSize
+        });
+
+    } catch (error) {
+        console.error(`Error in /downscale-to-target for ${imageName}:`, error);
+        res.status(500).json({ error: `Failed to downscale image. ${error.message}` });
+    }
+});
+
 
 app.get('/api/image', async (req, res) => {
     const { folderPath, imageName } = req.query;

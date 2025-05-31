@@ -126,21 +126,36 @@ body, html {
     background-color: #4f4f4f;
 }
 
-#fillImageButton {
+/* Styling for new action buttons */
+.app-button {
     padding: 8px 12px;
     font-size: 0.85em;
-    background-color: #007bff; /* Different color to distinguish */
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.1s ease; /* Combined transitions */
 }
 
-#fillImageButton:hover {
+.app-button:hover {
+    transform: translateY(-1px); /* Slight lift effect */
+    /* Specific hover background colors will be defined by ID */
+}
+
+#makeOneToOneButton {
+    background-color: #007bff; /* Blue */
+}
+#makeOneToOneButton:hover {
     background-color: #0056b3;
 }
-/* End of new styles */
+
+#downscaleButton {
+    background-color: #28a745; /* Green */
+}
+#downscaleButton:hover {
+    background-color: #1e7e34;
+}
+/* End of new styles for fill image feature / app-buttons */
 
 .application-section-header {
     display: flex;
