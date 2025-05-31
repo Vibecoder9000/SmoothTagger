@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalConfirmNoButton = document.getElementById('modalConfirmNoButton');
     const size512Button = document.getElementById('size512Button'); // Keep for downscaleButton
     const size1024Button = document.getElementById('size1024Button'); // Keep for downscaleButton
+    const toastNotification = document.getElementById('toastNotification');
 
     let selectedSize = 512; // Default size, used by Downscale to Target
     let currentProjectServerPath = '';
@@ -52,6 +53,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let globalTagsSet = new Set();
     const API_BASE_URL = '/api';
     let draggedTagElement = null;
+
+    let toastTimeout; // Variable to hold the timeout ID for the toast
+
+    function showToast(message) {
+        if (!toastNotification) return;
+        toastNotification.textContent = message;
+        toastNotification.classList.add('show');
+
+        // Clear any existing timeout to prevent premature hiding
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+        }
+
+        toastTimeout = setTimeout(() => {
+            toastNotification.classList.remove('show');
+        }, 3000);
+    }
 
     function logMessage(message, type = 'info') {
         const prefix = `[${new Date().toLocaleTimeString()}]`;
@@ -537,6 +555,25 @@ document.addEventListener('DOMContentLoaded', () => {
         modalConfirmationView.style.display = 'none';
         modalStatsView.style.display = 'block';
         logMessage("Statistics view displayed in modal.");
+
+        const copyAllTagsButton = document.getElementById('copyAllTagsButton');
+        if (copyAllTagsButton) {
+            copyAllTagsButton.addEventListener('click', async () => {
+                const tagsToCopy = Object.keys(tagFrequencies);
+                if (tagsToCopy.length > 0) {
+                    const tagsString = tagsToCopy.join(', ');
+                    try {
+                        await navigator.clipboard.writeText(tagsString);
+                        showToast('Tags copied to clipboard!');
+                    } catch (err) {
+                        showToast('Error copying tags.');
+                        console.error('Clipboard error:', err);
+                    }
+                } else {
+                    showToast('No tags to copy.');
+                }
+            });
+        }
     }
 
     // --- Image Processing Feature Logic ---
