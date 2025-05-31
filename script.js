@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalStatsImagesTagged = document.getElementById('modalStatsImagesTagged');
     const modalStatsUniqueTags = document.getElementById('modalStatsUniqueTags');
     const modalStatsTagFrequencyList = document.getElementById('modalStatsTagFrequencyList');
+    const modalConfirmationView = document.getElementById('modalConfirmationView');
+    const modalStatsView = document.getElementById('modalStatsView');
+    const modalConfirmYesButton = document.getElementById('modalConfirmYesButton');
+    const modalConfirmNoButton = document.getElementById('modalConfirmNoButton');
     const size512Button = document.getElementById('size512Button'); // Keep for downscaleButton
     const size1024Button = document.getElementById('size1024Button'); // Keep for downscaleButton
 
@@ -474,13 +478,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: false });
     }
 
-    function showStatisticsModal() {
-        if (!statsModal || !modalStatsImagesTagged || !modalStatsUniqueTags || !modalStatsTagFrequencyList) {
-            logMessage("One or more stats modal elements are missing.", "error");
+    function showModalWithConfirmation() {
+        if (statsModal && modalConfirmationView && modalStatsView) {
+            modalConfirmationView.style.display = 'block';
+            modalStatsView.style.display = 'none';
+            statsModal.style.display = 'flex';
+            logMessage("Modal displayed with confirmation view.");
+        } else {
+            logMessage("Modal or its view components not found.", "error");
+        }
+    }
+
+    function populateAndShowStatsView() {
+        if (!statsModal || !modalConfirmationView || !modalStatsView || !modalStatsImagesTagged || !modalStatsUniqueTags || !modalStatsTagFrequencyList) {
+            logMessage("One or more stats modal components for stats view are missing.", "error");
             return;
         }
 
-        // --- Calculate Statistics ---
+        // --- Calculate Statistics (same logic as before) ---
         let imagesTaggedCount = 0;
         const allTags = [];
         const tagFrequencies = {};
@@ -497,7 +512,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-
         const uniqueTags = new Set(allTags);
 
         // --- Populate Modal Content ---
@@ -519,9 +533,10 @@ document.addEventListener('DOMContentLoaded', () => {
             modalStatsTagFrequencyList.appendChild(listItem);
         }
 
-        // --- Display Modal ---
-        statsModal.style.display = 'block';
-        logMessage("Statistics modal displayed.");
+        // --- Switch Views Within Modal ---
+        modalConfirmationView.style.display = 'none';
+        modalStatsView.style.display = 'block';
+        logMessage("Statistics view displayed in modal.");
     }
 
     // --- Image Processing Feature Logic ---
@@ -645,13 +660,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (closeTaggerButton) {
         closeTaggerButton.addEventListener('click', () => {
-            const wantsToClose = confirm("Do you want to close the application? Statistics will be shown first.");
-            if (wantsToClose) {
-                logMessage("User confirmed intent to close. Displaying stats modal.");
-                showStatisticsModal(); // Call the function to display the modal
-            } else {
-                logMessage("User cancelled closing process.");
-            }
+            logMessage("Main 'X' button clicked. Showing modal with confirmation.");
+            showModalWithConfirmation();
         });
     }
 
@@ -665,6 +675,22 @@ document.addEventListener('DOMContentLoaded', () => {
             window.close();
             // Note: window.close() might not work in all browser contexts,
             // especially if the window wasn't opened by script.
+        });
+    }
+
+    if (modalConfirmYesButton) {
+        modalConfirmYesButton.addEventListener('click', () => {
+            logMessage("'Yes' button clicked in modal confirmation.");
+            populateAndShowStatsView();
+        });
+    }
+
+    if (modalConfirmNoButton) {
+        modalConfirmNoButton.addEventListener('click', () => {
+            logMessage("'No' button clicked in modal confirmation. Hiding modal.");
+            if (statsModal) {
+                statsModal.style.display = 'none';
+            }
         });
     }
 });
