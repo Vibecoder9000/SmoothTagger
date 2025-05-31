@@ -17,7 +17,7 @@ body, html {
 #loadProjectFolderButton { padding: 12px 25px; font-size: 1.1em; background: linear-gradient(to right, #007bff, #0056b3); color: white; border: none; border-radius: 5px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
 #loadProjectFolderButton:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4); }
 .error-message { color: #ff6b6b; margin-top: 10px; }
-.container { display: flex; height: 100%; width: 100%; }
+.container { display: flex; height: 100%; width: 100%; position: relative; /* Added for positioning context */ }
 .left-pane { flex: 0 0 50%; height: 100vh; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid #4a4a4a; }
 .main-image-area { flex-grow: 1; height: 70%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 10px; padding: 10px; overflow: hidden; }
 #mainImage { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
@@ -215,3 +215,216 @@ body, html {
 .prev-btn:hover { background-color: #224364; }
 .next-btn { background-color: #A82A2A; }
 .next-btn:hover { background-color: #8B2323; }
+
+#closeTaggerButton {
+    position: absolute;
+    top: 10px;
+    left: 10px; /* Changed from right to left */
+    width: 45px;
+    height: 30px;
+    background-color: transparent;
+    color: #E0E0E0; /* Light color for 'X' on dark background */
+    border: none;
+    border-radius: 4px; /* Slightly rounded corners */
+    font-family: 'Segoe UI Symbol', Arial, sans-serif; /* For a potentially better 'X' character */
+    font-size: 16px;
+    line-height: 30px; /* Helps vertically center if not using flex, but flex is better */
+    font-weight: normal;
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+}
+
+#closeTaggerButton:hover {
+    background-color: #E81123; /* Windows 11 close button red */
+    color: white;
+}
+
+#closeTaggerButton:active {
+    background-color: #A30C1A; /* A darker shade for pressed state */
+    color: white;
+}
+
+/* New Modal Styles */
+.modal { /* Updated to center .modal-content */
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    /* For centering the .modal-content that has dynamic width/height based on viewport */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* Prevent backdrop scrollbars if modal content handles its own */
+}
+
+.modal-content {
+    width: calc(100vw - 200px);
+    height: calc(100vh - 200px);
+    max-width: none; /* Override previous max-width if any */
+    max-height: none; /* Override previous max-height if any */
+
+    background-color: rgba(30, 30, 30, 0.95); /* Slightly adjusted for more opacity */
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 8px; /* Slightly less rounded */
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+
+    padding: 20px; /* Inner padding */
+    display: flex; /* To manage views inside */
+    flex-direction: column;
+    overflow-y: auto; /* Allow content itself to scroll if it exceeds the dynamic height */
+    position: relative; /* Ensure close button is positioned relative to this */
+}
+
+#modalConfirmationView, #modalStatsView {
+    width: 100%; /* Take full width of modal-content */
+}
+#modalConfirmationView {
+    display: block; /* Initially shown, JS will hide/show */
+    text-align: center; /* Center its own content */
+    padding-top: 20%; /* Push content down a bit */
+}
+
+#modalConfirmationView h2 {
+    font-size: 1.5em;
+    color: #fff;
+    margin-bottom: 15px;
+}
+#modalConfirmationView p {
+    font-size: 1.1em;
+    margin-bottom: 25px;
+}
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+.modal-action-button { /* Base style for Yes/No buttons */
+    padding: 10px 25px;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+.modal-action-button:hover {
+    transform: translateY(-1px);
+}
+#modalConfirmYesButton {
+    background-color: #28a745; /* Green */
+    color: white;
+}
+#modalConfirmYesButton:hover {
+    background-color: #218838;
+}
+#modalConfirmNoButton {
+    background-color: #6c757d; /* Grey */
+    color: white;
+}
+#modalConfirmNoButton:hover {
+    background-color: #5a6268;
+}
+
+
+#modalStatsView h2 {
+    text-align: center;
+    font-size: 1.5em;
+    margin-bottom: 15px;
+}
+#modalStatsData {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+#modalStatsData p {
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    text-align: left;
+}
+#modalStatsData h3 {
+    font-size: 1.3em;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+    text-align: left;
+}
+#modalStatsTagFrequencyList {
+    list-style-type: none;
+    padding-left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Strict 3 columns */
+    gap: 10px; /* Increased gap */
+    max-height: none;
+    overflow-y: visible;
+}
+#modalStatsTagFrequencyList li {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    word-break: break-word;
+}
+
+.modal-close-btn {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.modal-close-btn:hover,
+.modal-close-btn:focus {
+    color: #fff;
+    text-decoration: none;
+}
+
+#modalStatsContent h2, .modal-content h2 { /* Targeting h2 inside modal */
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    color: #fff;
+    text-align: center;
+}
+
+#modalStatsContent p {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+#modalStatsContent h3 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px;
+    text-align: left;
+    font-size: 1.3em;
+}
+
+#modalStatsTagFrequencyList {
+    text-align: left;
+}
+
+/* #modalStatsTagFrequencyList li { */ /* Already styled above with more detail */
+    /* margin-bottom: 6px; */
+    /* font-size: 1em; */
+/* } */
+
+/* #modalStatsTagFrequencyList li:nth-child(odd) { */ /* Already styled above as default for all li */
+    /* background-color: rgba(255, 255, 255, 0.05); */
+    /* padding: 3px; */
+    /* border-radius: 3px; */
+/* } */

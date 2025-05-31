@@ -16,6 +16,7 @@
     </div>
 
     <div class="container" id="mainTaggerUI" style="display: none;">
+        <button id="closeTaggerButton" title="Close Tagger & Show Stats">X</button>
         <div class="left-pane">
             <div class="main-image-area">
                 <img id="mainImage" src="#" alt="Image will load here">
@@ -69,6 +70,36 @@
             </div>
         </div>
     </div>
+
+    <div id="statsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button id="finalCloseButton" class="modal-close-btn" title="Close Application">&times;</button>
+
+            <!-- View 1: Confirmation -->
+            <div id="modalConfirmationView">
+                <h2>Confirmation</h2>
+                <p>Do you want to close the application?</p>
+                <div class="modal-buttons">
+                    <button id="modalConfirmYesButton" class="app-button modal-action-button">Yes</button>
+                    <button id="modalConfirmNoButton" class="app-button modal-action-button secondary">No</button>
+                </div>
+            </div>
+
+            <!-- View 2: Statistics (initially hidden) -->
+            <div id="modalStatsView" style="display: none;">
+                <h2>Tagging Statistics</h2>
+                <div id="modalStatsData">
+                    <p><strong>Images Tagged:</strong> <span id="modalStatsImagesTagged">-</span></p>
+                    <p><strong>Total Unique Tags:</strong> <span id="modalStatsUniqueTags">-</span></p>
+                    <h3>Tag Frequencies:</h3>
+                    <ul id="modalStatsTagFrequencyList">
+                        <!-- Tag frequencies will be populated here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="dragGhost" style="position: absolute; visibility: hidden; pointer-events: none;"></div>
     <script src="/script.js"></script>
 </body>
