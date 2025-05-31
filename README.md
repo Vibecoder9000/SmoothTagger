@@ -7,7 +7,7 @@
 ![](Square.png)
 
 ## 1.0 UI (bit outdated)
-
+ 
 ![](sample.png)
 
 # Lora Image Tagger
