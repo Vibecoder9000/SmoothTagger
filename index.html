@@ -16,6 +16,7 @@
     </div>
 
     <div class="container" id="mainTaggerUI" style="display: none;">
+        <button id="closeTaggerButton" title="Close Tagger & Show Stats">X</button>
         <div class="left-pane">
             <div class="main-image-area">
                 <img id="mainImage" src="#" alt="Image will load here">
@@ -69,6 +70,22 @@
             </div>
         </div>
     </div>
+
+    <div id="statsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button id="finalCloseButton" class="modal-close-btn" title="Close Application">&times;</button>
+            <h2>Tagging Statistics</h2>
+            <div id="modalStatsContent">
+                <p><strong>Images Tagged:</strong> <span id="modalStatsImagesTagged">-</span></p>
+                <p><strong>Total Unique Tags:</strong> <span id="modalStatsUniqueTags">-</span></p>
+                <h3>Tag Frequencies:</h3>
+                <ul id="modalStatsTagFrequencyList" style="list-style-type: none; padding-left: 0; max-height: 200px; overflow-y: auto;">
+                    <!-- Tag frequencies will be populated here by JavaScript -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div id="dragGhost" style="position: absolute; visibility: hidden; pointer-events: none;"></div>
     <script src="/script.js"></script>
 </body>
