@@ -1,6 +1,6 @@
 ## 1.2 Added Stats page to better copy paste tags
 
-![](Square.png)
+![](Stats.png)
 
 ## 1.1 Added button to fill out images of not 1:1 ratio and downscale higher than 512x512 or 1024x1024 resolution
 
