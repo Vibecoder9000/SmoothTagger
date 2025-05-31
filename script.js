@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTaggerUI = document.getElementById('mainTaggerUI');
     const mainImage = document.getElementById('mainImage');
     const galleryGridContainer = document.getElementById('galleryGridContainer');
+    const closeTaggerButton = document.getElementById('closeTaggerButton');
     
     const globalTagInput = document.getElementById('globalTagInput');
     const addSingleGlobalTagButton = document.getElementById('addSingleGlobalTagButton');
@@ -25,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI elements for image processing features
     const makeOneToOneButton = document.getElementById('makeOneToOneButton');
     const downscaleButton = document.getElementById('downscaleButton');
+    const statsModal = document.getElementById('statsModal');
+    const finalCloseButton = document.getElementById('finalCloseButton');
+    const modalStatsImagesTagged = document.getElementById('modalStatsImagesTagged');
+    const modalStatsUniqueTags = document.getElementById('modalStatsUniqueTags');
+    const modalStatsTagFrequencyList = document.getElementById('modalStatsTagFrequencyList');
     const size512Button = document.getElementById('size512Button'); // Keep for downscaleButton
     const size1024Button = document.getElementById('size1024Button'); // Keep for downscaleButton
 
@@ -87,6 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.addEventListener('beforeunload', () => saveState(true));
     loadState();
+
+    window.addEventListener('beforeunload', (event) => {
+        const confirmationMessage = 'Are you sure you want to leave?';
+        event.preventDefault();
+        event.returnValue = confirmationMessage;
+        return confirmationMessage;
+    });
 
     if (loadProjectFolderButton) {
         loadProjectFolderButton.addEventListener('click', async () => {
@@ -461,6 +474,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: false });
     }
 
+    function showStatisticsModal() {
+        if (!statsModal || !modalStatsImagesTagged || !modalStatsUniqueTags || !modalStatsTagFrequencyList) {
+            logMessage("One or more stats modal elements are missing.", "error");
+            return;
+        }
+
+        // --- Calculate Statistics ---
+        let imagesTaggedCount = 0;
+        const allTags = [];
+        const tagFrequencies = {};
+
+        for (const txtFileName in textFileContents) {
+            if (textFileContents.hasOwnProperty(txtFileName)) {
+                const tags = textFileContents[txtFileName];
+                if (tags && tags.length > 0) {
+                    imagesTaggedCount++;
+                    tags.forEach(tag => {
+                        allTags.push(tag);
+                        tagFrequencies[tag] = (tagFrequencies[tag] || 0) + 1;
+                    });
+                }
+            }
+        }
+
+        const uniqueTags = new Set(allTags);
+
+        // --- Populate Modal Content ---
+        modalStatsImagesTagged.textContent = imagesTaggedCount;
+        modalStatsUniqueTags.textContent = uniqueTags.size;
+
+        modalStatsTagFrequencyList.innerHTML = ''; // Clear previous list
+        if (Object.keys(tagFrequencies).length > 0) {
+            const sortedTags = Object.entries(tagFrequencies).sort(([,a],[,b]) => b-a); // Sort by frequency
+
+            sortedTags.forEach(([tag, count]) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${tag}: ${count}`;
+                modalStatsTagFrequencyList.appendChild(listItem);
+            });
+        } else {
+            const listItem = document.createElement('li');
+            listItem.textContent = 'No tags found.';
+            modalStatsTagFrequencyList.appendChild(listItem);
+        }
+
+        // --- Display Modal ---
+        statsModal.style.display = 'block';
+        logMessage("Statistics modal displayed.");
+    }
+
     // --- Image Processing Feature Logic ---
 
     // Event listeners for the 512/1024 size switch (used by Downscale to Target)
@@ -579,4 +642,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     // --- End Image Processing Feature Logic ---
+
+    if (closeTaggerButton) {
+        closeTaggerButton.addEventListener('click', () => {
+            const wantsToClose = confirm("Do you want to close the application? Statistics will be shown first.");
+            if (wantsToClose) {
+                logMessage("User confirmed intent to close. Displaying stats modal.");
+                showStatisticsModal(); // Call the function to display the modal
+            } else {
+                logMessage("User cancelled closing process.");
+            }
+        });
+    }
+
+    if (finalCloseButton) {
+        finalCloseButton.addEventListener('click', () => {
+            logMessage("Final close button clicked. Attempting to close window.");
+            // Hide the modal first, so it's not visible if window.close() fails
+            if (statsModal) {
+                statsModal.style.display = 'none';
+            }
+            window.close();
+            // Note: window.close() might not work in all browser contexts,
+            // especially if the window wasn't opened by script.
+        });
+    }
 });

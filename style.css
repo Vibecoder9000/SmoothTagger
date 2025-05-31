@@ -17,7 +17,7 @@ body, html {
 #loadProjectFolderButton { padding: 12px 25px; font-size: 1.1em; background: linear-gradient(to right, #007bff, #0056b3); color: white; border: none; border-radius: 5px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
 #loadProjectFolderButton:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4); }
 .error-message { color: #ff6b6b; margin-top: 10px; }
-.container { display: flex; height: 100%; width: 100%; }
+.container { display: flex; height: 100%; width: 100%; position: relative; /* Added for positioning context */ }
 .left-pane { flex: 0 0 50%; height: 100vh; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid #4a4a4a; }
 .main-image-area { flex-grow: 1; height: 70%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 10px; padding: 10px; overflow: hidden; }
 #mainImage { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
@@ -215,3 +215,110 @@ body, html {
 .prev-btn:hover { background-color: #224364; }
 .next-btn { background-color: #A82A2A; }
 .next-btn:hover { background-color: #8B2323; }
+
+#closeTaggerButton {
+    position: absolute; /* Or use flexbox on parent for alignment */
+    top: 15px; /* Adjust as needed */
+    right: 15px; /* Adjust as needed */
+    background-color: red;
+    color: white;
+    border: none;
+    border-radius: 50%; /* For a circular button */
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 1000; /* Ensure it's above other elements */
+    display: flex; /* For centering the 'X' */
+    justify-content: center; /* For centering the 'X' */
+    align-items: center; /* For centering the 'X' */
+    padding: 0; /* Reset padding if any is inherited */
+}
+
+#closeTaggerButton:hover {
+    background-color: darkred;
+}
+
+/* New Modal Styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1001; /* Sit on top - higher than the main X button */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed (though content should fit) */
+    background-color: rgba(0,0,0,0.6); /* Black w/ opacity for backdrop */
+    padding-top: 100px; /* Location of the box */
+}
+
+.modal-content {
+    background-color: rgba(40, 40, 40, 0.9); /* Dark, slightly transparent */
+    color: #f1f1f1;
+    margin: auto;
+    padding: 25px;
+    border: 1px solid #666;
+    width: 80%;
+    max-width: 500px; /* Max width */
+    border-radius: 10px; /* Rounded corners */
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    text-align: center;
+}
+
+.modal-close-btn {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.modal-close-btn:hover,
+.modal-close-btn:focus {
+    color: #fff;
+    text-decoration: none;
+}
+
+#modalStatsContent h2, .modal-content h2 { /* Targeting h2 inside modal */
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    color: #fff;
+    text-align: center;
+}
+
+#modalStatsContent p {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+#modalStatsContent h3 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px;
+    text-align: left;
+    font-size: 1.3em;
+}
+
+#modalStatsTagFrequencyList {
+    text-align: left;
+}
+
+#modalStatsTagFrequencyList li {
+    margin-bottom: 6px;
+    font-size: 1em;
+}
+
+#modalStatsTagFrequencyList li:nth-child(odd) {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 3px;
+    border-radius: 3px;
+}
