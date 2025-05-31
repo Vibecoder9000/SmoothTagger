@@ -29,7 +29,24 @@ The application features a Node.js/Express backend to serve the user interface a
 *   **State Persistence**:
     *   The application remembers the last successfully loaded project folder path (via localStorage).
     *   The list of global tags is also persisted in localStorage.
-*   **Backend Support**: A simple Node.js and Express backend serves the static frontend files and handles API requests for file listing, image serving, and tag saving.
+*   **Image Processing**:
+    *   **Make 1:1 Ratio Button**:
+        *   Converts the currently selected image to a 1:1 aspect ratio by padding it.
+        *   The padding color is automatically determined based on the average color of the image's existing border pixels (resulting in black or white).
+        *   Any transparent areas within the original image content are also filled with this determined color.
+        *   The image is expanded to the larger of its original dimensions (e.g., a 800x600 image becomes 800x800).
+    *   **Downscale to Target Button**:
+        *   Downscales the currently selected image to the target size chosen by the 512x512 / 1024x1024 switch.
+        *   **Important Preconditions**:
+            1.  The image *must* already have a 1:1 aspect ratio (use "Make 1:1 Ratio" first if needed).
+            2.  The image's current width (and height, since it's 1:1) *must* be larger than the selected target size.
+        *   The application will show an error if these preconditions are not met.
+    *   **Recommended Image Processing Workflow**:
+        1.  Select an image.
+        2.  Click "Make 1:1 Ratio" to make the image square and fill transparencies. The image will be saved immediately.
+        3.  (Optional) At this stage, you might use an external tool to upscale the 1:1 image if its resolution is smaller than your desired final target (e.g., if you have a 800x800 image but want a 1024x1024 final output, you might upscale it to 1024x1024 or larger externally).
+        4.  If the (now 1:1) image is larger than your desired final training resolution (e.g., you have a 1500x1500 image but want 1024x1024), select the desired target size (512 or 1024) using the switch, and then click "Downscale to Target". The image will be resized and saved.
+*   **Backend Support**: A simple Node.js and Express backend serves the static frontend files and handles API requests for file listing, image serving, tag saving, and image processing.
 
 ## How to Run
 
@@ -87,3 +104,14 @@ The backend provides the following API endpoints:
     *   **Description**: Saves a list of tags to a `.txt` file for a specific image. The `.txt` file will have the same base name as the image.
     *   **Request Body**: `{ "folderPath": "path/to/folder", "imageName": "image.jpg", "tags": ["tag1", "tag2", "tag3"] }`
     *   **Response**: JSON object confirming success or failure.
+
+*   **`POST /api/make-one-to-one`**
+    *   **Description**: Processes an image to make its aspect ratio 1:1 by padding it. The padding color is determined from border pixels. Fills internal transparency.
+    *   **Request Body**: `{ "folderPath": "path/to/folder", "imageName": "image.jpg" }`
+    *   **Response**: JSON object confirming success (including new dimensions, fill color used) or failure.
+
+*   **`POST /api/downscale-to-target`**
+    *   **Description**: Downscales an image to a specified target size (e.g., 512x512 or 1024x1024).
+    *   **Preconditions**: Image must already be 1:1 aspect ratio and larger than the target size.
+    *   **Request Body**: `{ "folderPath": "path/to/folder", "imageName": "image.jpg", "targetSize": 512 }`
+    *   **Response**: JSON object confirming success (including new dimensions) or failure (including precondition violations).

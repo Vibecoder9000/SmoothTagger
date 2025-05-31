@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const cors = require('cors');
+const sharp = require('sharp'); // Added Sharp
 
 const app = express();
 const PORT = 3000;
@@ -31,6 +32,103 @@ async function validateUserProvidedPath(userPath) {
         }
         console.error(`Error validating path "${userPath}" (resolved to "${absolutePath}"):`, err.message);
         throw err;
+    }
+}
+
+// Helper function to determine fill color based on border pixels
+async function determineFillColor(imageSharpInstance, initialMetadata) {
+    // imageSharpInstance should be a clone if further operations are done on the original instance outside this function
+    let fillColor = '#FFFFFF'; // Default to white
+    try {
+        if (initialMetadata.width > 1 && initialMetadata.height > 1) {
+            const borderSize = 1;
+            // Create a new sharp instance for each extract to avoid interference if the original instance is used elsewhere.
+            const topBorder = await imageSharpInstance.clone().extract({ left: 0, top: 0, width: initialMetadata.width, height: borderSize }).raw().toBuffer({ resolveWithObject: true });
+            const bottomBorder = await imageSharpInstance.clone().extract({ left: 0, top: initialMetadata.height - borderSize, width: initialMetadata.width, height: borderSize }).raw().toBuffer({ resolveWithObject: true });
+            const leftBorder = await imageSharpInstance.clone().extract({ left: 0, top: 0, width: borderSize, height: initialMetadata.height }).raw().toBuffer({ resolveWithObject: true });
+            const rightBorder = await imageSharpInstance.clone().extract({ left: initialMetadata.width - borderSize, top: 0, width: borderSize, height: initialMetadata.height }).raw().toBuffer({ resolveWithObject: true });
+
+            const allBorderPixels = [
+                ...topBorder.data, ...bottomBorder.data,
+                ...leftBorder.data, ...rightBorder.data
+            ];
+
+            let totalLuminance = 0;
+            const channels = initialMetadata.channels || 3;
+            const numPixels = allBorderPixels.length / channels;
+
+            if (numPixels > 0) {
+                for (let i = 0; i < allBorderPixels.length; i += channels) {
+                    const r = allBorderPixels[i];
+                    const g = allBorderPixels[i+1];
+                    const b = allBorderPixels[i+2];
+                    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                    totalLuminance += luminance;
+                }
+                const avgLuminance = totalLuminance / numPixels;
+                fillColor = avgLuminance > 128 ? '#FFFFFF' : '#000000';
+                console.log(`Determined fill color: ${fillColor} (avg luminance: ${avgLuminance.toFixed(2)})`);
+            } else {
+                 console.log('Not enough border pixel data for determineFillColor, defaulting to white.');
+            }
+        } else {
+            console.log('Image too small for border color analysis in determineFillColor, defaulting to white.');
+        }
+    } catch (error) {
+        console.error(`Error in determineFillColor: ${error.message}. Defaulting to white.`);
+        fillColor = '#FFFFFF'; // Fallback color
+    }
+    return fillColor;
+}
+
+// Helper function to write file with retry logic using a temporary file strategy
+async function writeFileWithRetry(originalFilePath, buffer, maxAttempts = 3, delayMs = 250) {
+    const tempFilePath = originalFilePath + '.tmp_processing';
+    console.log(`[writeFileWithRetry] Generated temporary file path: ${tempFilePath} for original: ${originalFilePath}`);
+
+    let tempFileWrittenSuccessfully = false;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            console.log(`[writeFileWithRetry] Attempt ${attempt}/${maxAttempts} to write buffer to temporary file: ${tempFilePath}`);
+            await fs.writeFile(tempFilePath, buffer);
+            tempFileWrittenSuccessfully = true;
+            console.log(`[writeFileWithRetry] Successfully wrote to temporary file: ${tempFilePath} on attempt ${attempt}`);
+            break; // Exit loop on success for temp file write
+        } catch (writeError) {
+            console.error(`[writeFileWithRetry] Attempt ${attempt}/${maxAttempts} to write to temporary file ${tempFilePath} failed. Error: ${writeError.message}`);
+            if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            } else {
+                console.error(`[writeFileWithRetry] All attempts to write to temporary file ${tempFilePath} failed.`);
+                // Attempt to clean up the temp file if it was created but write failed, though unlikely for writeFile itself
+                try { await fs.unlink(tempFilePath); console.log(`[writeFileWithRetry] Cleaned up partially written or empty temporary file: ${tempFilePath}`); } catch (e) { /* ignore if cleanup fails */ }
+                throw writeError; // Re-throw the last error if all attempts to write temp file fail
+            }
+        }
+    }
+
+    if (!tempFileWrittenSuccessfully) {
+        // This safeguard should ideally not be reached if the loop above correctly re-throws.
+        // However, if it is, it indicates a logic flaw in the loop's error handling for temp file write.
+        console.error(`[writeFileWithRetry] Critical: Temporary file ${tempFilePath} not written successfully, but error not propagated from write loop.`);
+        throw new Error(`[writeFileWithRetry] Failed to write to temporary file ${tempFilePath} after ${maxAttempts} attempts, and error was not properly thrown from loop.`);
+    }
+
+    // If temporary file was written, attempt to rename it to the original file path
+    try {
+        console.log(`[writeFileWithRetry] Attempting to rename temporary file ${tempFilePath} to ${originalFilePath}`);
+        await fs.rename(tempFilePath, originalFilePath);
+        console.log(`[writeFileWithRetry] Successfully renamed ${tempFilePath} to ${originalFilePath}`);
+    } catch (renameError) {
+        console.error(`[writeFileWithRetry] Failed to rename ${tempFilePath} to ${originalFilePath}. Error: ${renameError.message}`);
+        // Attempt to clean up the temporary file
+        try {
+            await fs.unlink(tempFilePath);
+            console.log(`[writeFileWithRetry] Cleaned up temporary file: ${tempFilePath} after failed rename.`);
+        } catch (cleanupError) {
+            console.error(`[writeFileWithRetry] Failed to clean up temporary file ${tempFilePath} after failed rename: ${cleanupError.message}`);
+        }
+        throw renameError; // Re-throw the rename error to indicate overall failure
     }
 }
 
@@ -65,6 +163,132 @@ app.post('/api/list-folder', async (req, res) => {
         res.status(400).json({ error: error.message || 'Failed to list folder contents.' });
     }
 });
+
+// Endpoint to make an image 1:1 ratio by padding
+app.post('/api/make-one-to-one', async (req, res) => {
+    const { folderPath, imageName } = req.body;
+
+    if (!folderPath || !imageName) {
+        return res.status(400).json({ error: 'Missing required parameters: folderPath, imageName.' });
+    }
+
+    const imagePath = path.join(folderPath, imageName);
+    if (!path.resolve(imagePath).startsWith(path.resolve(folderPath))) {
+        return res.status(403).json({ error: 'Forbidden: Path traversal attempt detected.' });
+    }
+
+    try {
+        await fs.access(imagePath, fs.constants.R_OK | fs.constants.W_OK);
+    } catch (err) {
+        return res.status(404).json({ error: `Image not found or not accessible: ${err.message}` });
+    }
+
+    try {
+        const image = sharp(imagePath);
+        const metadata = await image.metadata();
+
+        // Use a clone for color determination if the original 'image' instance is chained further before this color is used.
+        // Here, 'image' is re-assigned, so it's fine.
+        const fillColor = await determineFillColor(image.clone(), metadata);
+
+        const newSize = Math.max(metadata.width, metadata.height);
+
+        const processedImageBuffer = await image
+            .removeAlpha() // Ensure image is opaque
+            .flatten({ background: fillColor }) // Fill any transparent areas with determined color
+            .resize({ // This ensures the content is placed correctly within the 'extend' operation
+                width: metadata.width,
+                height: metadata.height,
+                fit: 'contain', // Content is scaled down if it exceeds these dimensions, but not up
+                background: fillColor // Background for 'contain' if needed, though extend handles the main padding
+            })
+            .extend({
+                top: Math.floor((newSize - metadata.height) / 2),
+                bottom: Math.ceil((newSize - metadata.height) / 2),
+                left: Math.floor((newSize - metadata.width) / 2),
+                right: Math.ceil((newSize - metadata.width) / 2),
+                background: fillColor
+            })
+            .png()
+            .toBuffer();
+
+        await writeFileWithRetry(imagePath, processedImageBuffer);
+
+        const finalMetadata = await sharp(imagePath).metadata(); // Get new metadata
+
+        res.json({
+            success: true,
+            message: 'Image successfully made 1:1.',
+            outputPath: imagePath,
+            newWidth: finalMetadata.width, // Should be newSize
+            newHeight: finalMetadata.height, // Should be newSize
+            fillColorUsed: fillColor
+        });
+
+    } catch (error) {
+        console.error(`Error in /make-one-to-one for ${imageName}:`, error);
+        res.status(500).json({ error: `Failed to make image 1:1. ${error.message}` });
+    }
+});
+
+
+// Endpoint to downscale an image to a target size
+app.post('/api/downscale-to-target', async (req, res) => {
+    const { folderPath, imageName, targetSize } = req.body;
+
+    if (!folderPath || !imageName || !targetSize) {
+        return res.status(400).json({ error: 'Missing required parameters: folderPath, imageName, targetSize.' });
+    }
+    if (typeof targetSize !== 'number' || targetSize <= 0) {
+        return res.status(400).json({ error: 'targetSize must be a positive number.' });
+    }
+
+    const imagePath = path.join(folderPath, imageName);
+    if (!path.resolve(imagePath).startsWith(path.resolve(folderPath))) {
+        return res.status(403).json({ error: 'Forbidden: Path traversal attempt detected.' });
+    }
+
+    try {
+        await fs.access(imagePath, fs.constants.R_OK | fs.constants.W_OK);
+    } catch (err) {
+        return res.status(404).json({ error: `Image not found or not accessible: ${err.message}` });
+    }
+
+    try {
+        const image = sharp(imagePath);
+        const metadata = await image.metadata();
+
+        if (metadata.width !== metadata.height) {
+            return res.status(400).json({ error: 'Image is not 1:1 ratio. Please use "Make 1:1 Ratio" first.' });
+        }
+        if (metadata.width <= targetSize) {
+            return res.status(400).json({ error: `Image width (${metadata.width}px) is not larger than target size (${targetSize}px). No downscaling needed.` });
+        }
+
+        const processedImageBuffer = await image
+            .resize({ width: targetSize, height: targetSize }) // Already 1:1
+            .png()
+            .toBuffer();
+
+        await writeFileWithRetry(imagePath, processedImageBuffer);
+
+        const finalMetadata = await sharp(imagePath).metadata(); // Get new metadata
+
+
+        res.json({
+            success: true,
+            message: 'Image successfully downscaled.',
+            outputPath: imagePath,
+            newWidth: finalMetadata.width, // Should be targetSize
+            newHeight: finalMetadata.height // Should be targetSize
+        });
+
+    } catch (error) {
+        console.error(`Error in /downscale-to-target for ${imageName}:`, error);
+        res.status(500).json({ error: `Failed to downscale image. ${error.message}` });
+    }
+});
+
 
 app.get('/api/image', async (req, res) => {
     const { folderPath, imageName } = req.query;
