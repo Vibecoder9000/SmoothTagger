@@ -98,6 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('beforeunload', () => saveState(true));
     loadState();
 
+    window.addEventListener('beforeunload', (event) => {
+        const confirmationMessage = 'Are you sure you want to leave?';
+        event.preventDefault();
+        event.returnValue = confirmationMessage;
+        return confirmationMessage;
+    });
+
     if (loadProjectFolderButton) {
         loadProjectFolderButton.addEventListener('click', async () => {
             const userPath = projectFolderPathInput.value.trim();
