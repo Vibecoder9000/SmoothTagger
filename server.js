@@ -139,25 +139,44 @@ app.post('/api/fill-image', async (req, res) => {
             console.log('Image too small for border color analysis, defaulting to white.');
         }
 
+        // Prepare the image that will be placed onto the canvas:
+        let imageToCompositeInstance = image.removeAlpha().flatten({ background: fillColor });
 
-        // Create a new canvas and composite the original image onto it
-        const processedImageBuffer = await sharp({
+        // Get metadata of this flattened image
+        const flattenedMetadata = await imageToCompositeInstance.metadata();
+
+        // If the flattened image is larger than the target dimensions, resize it down.
+        if (flattenedMetadata.width > targetWidth || flattenedMetadata.height > targetHeight) {
+            imageToCompositeInstance = imageToCompositeInstance.resize({
+                width: targetWidth,
+                height: targetHeight,
+                fit: 'inside', // This ensures aspect ratio is maintained and it fits *within* target dimensions
+                withoutEnlargement: true // Important: do not enlarge if it's already smaller
+            });
+        }
+
+        const imageToCompositeBuffer = await imageToCompositeInstance.toBuffer();
+
+        // Now composite this buffer onto the new canvas
+        const finalImageBuffer = await sharp({
             create: {
                 width: targetWidth,
                 height: targetHeight,
-                channels: metadata.channels === 4 ? 4 : 3, // Preserve alpha if original had it, for the composite step
+                // Use original metadata.channels for consistency in determining output channels,
+                // or default to 3 if not available. flatten ensures it's opaque.
+                channels: metadata.channels || 3,
                 background: fillColor
             }
         })
         .composite([{
-            input: await image.removeAlpha().flatten({ background: fillColor }).toBuffer(), // Fill transparent areas of original
-            gravity: 'centre'
+            input: imageToCompositeBuffer,
+            gravity: 'centre' // Centre the (potentially downsized) image
         }])
-        .png() // Output as PNG to preserve quality, especially if original was PNG or had transparency
+        .png() // Outputting as PNG
         .toBuffer();
 
         // Overwrite the original file
-        await fs.writeFile(imagePath, processedImageBuffer);
+        await fs.writeFile(imagePath, finalImageBuffer);
 
         const finalMetadata = await sharp(imagePath).metadata(); // Get metadata of the new image
 
