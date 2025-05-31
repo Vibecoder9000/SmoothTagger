@@ -1,10 +1,20 @@
+## 1.2 Added Stats page to better copy paste tags
+
+![](Square.png)
+
+## 1.1 Added button to fill out images of not 1:1 ratio and downscale higher than 512x512 or 1024x1024 resolution
+
+![](Square.png)
+
+## 1.0 UI (bit outdated)
+
 ![](sample.png)
 
 # Lora Image Tagger
 
 ## Description
 
-The Lora Image Tagger is a web-based application designed to streamline the process of preparing image datasets for Lora (Low-Rank Adaptation) model training. It allows users to load a local folder of images, navigate through them efficiently, and assign descriptive tags. These tags are saved in individual `.txt` files that correspond to each image file, a common format for AI training datasets.
+The Lora Image Tagger is a web-based application designed to streamline the process of preparing image datasets for training Loras. It allows users to load a local folder of images, navigate through them efficiently, and assign descriptive tags. These tags are saved in individual `.txt` files that correspond to each image file, a common format for AI training datasets.
 
 The application features a Node.js/Express backend to serve the user interface and manage file system operations like reading images and saving tag files. The frontend provides a user-friendly interface for tagging and navigation.
 
