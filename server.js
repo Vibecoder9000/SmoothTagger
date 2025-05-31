@@ -81,22 +81,54 @@ async function determineFillColor(imageSharpInstance, initialMetadata) {
     return fillColor;
 }
 
-// Helper function to write file with retry logic
-async function writeFileWithRetry(filePath, buffer, maxAttempts = 3, delayMs = 250) {
+// Helper function to write file with retry logic using a temporary file strategy
+async function writeFileWithRetry(originalFilePath, buffer, maxAttempts = 3, delayMs = 250) {
+    const tempFilePath = originalFilePath + '.tmp_processing';
+    console.log(`[writeFileWithRetry] Generated temporary file path: ${tempFilePath} for original: ${originalFilePath}`);
+
+    let tempFileWrittenSuccessfully = false;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            console.log(`Attempt ${attempt}/${maxAttempts} to write file to: ${filePath}`);
-            await fs.writeFile(filePath, buffer);
-            console.log(`Successfully wrote file to: ${filePath} on attempt ${attempt}`);
-            return; // Exit on success
+            console.log(`[writeFileWithRetry] Attempt ${attempt}/${maxAttempts} to write buffer to temporary file: ${tempFilePath}`);
+            await fs.writeFile(tempFilePath, buffer);
+            tempFileWrittenSuccessfully = true;
+            console.log(`[writeFileWithRetry] Successfully wrote to temporary file: ${tempFilePath} on attempt ${attempt}`);
+            break; // Exit loop on success for temp file write
         } catch (writeError) {
-            console.error(`Attempt ${attempt}/${maxAttempts} to write file ${filePath} failed. Error: ${writeError.message}`);
+            console.error(`[writeFileWithRetry] Attempt ${attempt}/${maxAttempts} to write to temporary file ${tempFilePath} failed. Error: ${writeError.message}`);
             if (attempt < maxAttempts) {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
             } else {
-                throw writeError; // Re-throw the last error if all attempts fail
+                console.error(`[writeFileWithRetry] All attempts to write to temporary file ${tempFilePath} failed.`);
+                // Attempt to clean up the temp file if it was created but write failed, though unlikely for writeFile itself
+                try { await fs.unlink(tempFilePath); console.log(`[writeFileWithRetry] Cleaned up partially written or empty temporary file: ${tempFilePath}`); } catch (e) { /* ignore if cleanup fails */ }
+                throw writeError; // Re-throw the last error if all attempts to write temp file fail
             }
         }
+    }
+
+    if (!tempFileWrittenSuccessfully) {
+        // This safeguard should ideally not be reached if the loop above correctly re-throws.
+        // However, if it is, it indicates a logic flaw in the loop's error handling for temp file write.
+        console.error(`[writeFileWithRetry] Critical: Temporary file ${tempFilePath} not written successfully, but error not propagated from write loop.`);
+        throw new Error(`[writeFileWithRetry] Failed to write to temporary file ${tempFilePath} after ${maxAttempts} attempts, and error was not properly thrown from loop.`);
+    }
+
+    // If temporary file was written, attempt to rename it to the original file path
+    try {
+        console.log(`[writeFileWithRetry] Attempting to rename temporary file ${tempFilePath} to ${originalFilePath}`);
+        await fs.rename(tempFilePath, originalFilePath);
+        console.log(`[writeFileWithRetry] Successfully renamed ${tempFilePath} to ${originalFilePath}`);
+    } catch (renameError) {
+        console.error(`[writeFileWithRetry] Failed to rename ${tempFilePath} to ${originalFilePath}. Error: ${renameError.message}`);
+        // Attempt to clean up the temporary file
+        try {
+            await fs.unlink(tempFilePath);
+            console.log(`[writeFileWithRetry] Cleaned up temporary file: ${tempFilePath} after failed rename.`);
+        } catch (cleanupError) {
+            console.error(`[writeFileWithRetry] Failed to clean up temporary file ${tempFilePath} after failed rename: ${cleanupError.message}`);
+        }
+        throw renameError; // Re-throw the rename error to indicate overall failure
     }
 }
 
